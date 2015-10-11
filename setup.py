@@ -8,9 +8,10 @@ setup(
     name='usergrid',
     version=VERSION,
     description='Usergrid SDK for Python',
+    url='http://usergrid.apache.org',
+    download_url="https://codeload.github.com/jwest-apigee/usergrid-python/zip/v0.0.1",
     author='Jeff West',
     author_email='jwest@apigee.com',
-    url='http://usergrid.apache.org',
     packages=find_packages(),
     install_requires=[
         'requests',

@@ -34,11 +34,15 @@ class UsergridError(Exception):
 
 
 class UsergridClient:
-    def __init__(self, api_url, org_name, token=None):
-        self.access_token = token
+    def __init__(self, api_url, org_name, access_token=None):
+        self.access_token = access_token
         self.api_url = api_url
         self.org_name = org_name
-        self.headers = {}
+
+        if access_token is not None:
+            self.headers = {'Authorization': 'Bearer %s' % access_token}
+        else:
+            self.headers = {}
 
         self.url_data = {
             'api_url': api_url,
@@ -160,7 +164,7 @@ class UsergridClient:
         return r
 
     def put(self, url, data, **kwargs):
-        r = requests.get(url, data=json.dumps(data), headers=self.headers)
+        r = requests.put(url, data=json.dumps(data), headers=self.headers)
         return r
 
     def list_apps(self):
@@ -184,25 +188,11 @@ class UsergridClient:
                                 api_response=r,
                                 url=url)
 
-    def get_application(self, app_name):
-        url = management_app_url_template.format(app_name=app_name, **self.url_data)
+    def organization(self, org_name):
+        return UsergridOrganization(org_name, self)
 
-        r = self.get(url)
-
-        if r.status_code == 200:
-            api_response = r.json()
-            app_entity = api_response.get('entities')[0]
-            return UsergridApplication(app_entity['applicationName'],
-                                       client=self)
-        else:
-            raise UsergridError(message='Unable to get application name=[%s]' % app_name,
-                                status_code=r.status_code,
-                                api_response=r,
-                                url=url)
-
-    def application(self, app_name):
-        app = UsergridApplication(app_name, self)
-        return app
+    def org(self, org_name):
+        return self.organization(org_name)
 
 
 class UsergridEntity(object):
@@ -216,7 +206,29 @@ class UsergridEntity(object):
     def __str__(self):
         return json.dumps(self.data)
 
-    def put(self):
+    def get(self, client=None, **kwargs):
+        url = get_entity_url_template.format(app_name=self.app_name,
+                                             collection=self.collection_name,
+                                             uuid=self.data['uuid'] if self.data['uuid'] is not None else self.data[
+                                                 'name'],
+                                             **self.client.url_data)
+        if client:
+            r = client.get(url, **kwargs)
+        else:
+            r = self.client.get(url, **kwargs)
+
+        if r.status_code == 200:
+            api_response = r.json()
+            entity = api_response.get('entities')[0]
+            self.data.update(entity)
+
+        else:
+            raise UsergridError(message='Unable to get entity',
+                                status_code=r.status_code,
+                                api_response=r,
+                                url=url)
+
+    def put(self, client=None, **kwargs):
         url = put_entity_url_template.format(app_name=self.app_name,
                                              collection=self.collection_name,
                                              uuid=self.data['uuid'] if self.data['uuid'] is not None else self.data[
@@ -227,7 +239,10 @@ class UsergridEntity(object):
 
         if 'metadata' in put_data: put_data.pop('metadata')
 
-        r = self.client.put(url, data=put_data)
+        if client:
+            r = client.put(url, data=put_data, **kwargs)
+        else:
+            r = self.client.put(url, data=put_data, **kwargs)
 
         if r.status_code == 200:
             api_response = r.json()
@@ -240,6 +255,18 @@ class UsergridEntity(object):
                                 data=put_data,
                                 api_response=r,
                                 url=url)
+
+
+class UsergridOrganization(object):
+    def __init__(self, org_name, client):
+        self.org_name = org_name
+        self.client = client
+
+    def application(self, app_name):
+        return UsergridApplication(app_name, client=self.client)
+
+    def app(self, app_name):
+        return self.application(app_name)
 
 
 class UsergridCollection(object):
@@ -255,6 +282,16 @@ class UsergridCollection(object):
             'app_name': self.app_name,
             'collection_name': self.collection_name,
         })
+
+    def entity(self, uuid):
+        pass
+
+    def entity_from_data(self, data):
+        return UsergridEntity(org_name=self.org_name,
+                              app_name=self.app_name,
+                              collection_name=self.collection_name,
+                              data=data,
+                              client=self.client)
 
     def query(self, ql='select *', limit=100):
         url = collection_query_url_template.format(app_name=self.app_name,
@@ -376,12 +413,7 @@ class UsergridQuery:
             target_url = self.url
 
             if self.next_cursor is not None:
-
-                if '?' in target_url:
-                    delim = '&'
-                else:
-                    delim = '?'
-
+                delim = '&' if '?' in target_url else '?'
                 target_url = '%s%scursor=%s' % (self.url, delim, self.next_cursor)
 
             r = op(target_url, data=json.dumps(self.data), headers=self.headers)

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import traceback
 import requests
 import time
@@ -21,6 +22,28 @@ get_entity_url_template = "{api_url}/{org_name}/{app_name}/{collection}/{uuid}&c
 put_entity_url_template = "{api_url}/{org_name}/{app_name}/{collection}/{uuid}"
 
 
+class UsergridConnectionProfile(object):
+    def __init__(self,
+                 profile_name='default',
+                 directory=os.getenv('HOME') + '/.usergrid'):
+        self.profile_name = profile_name
+        self.directory = directory
+
+        file_path = os.pathsep.join([directory, profile_name, '.json'])
+
+        if not os.path.exists(file_path):
+            raise ValueError('Profile not found in file=[%s]' % file_path)
+
+        with open(file_path, 'r') as f:
+            self.profile = json.load(f)
+
+    def get_endpoint_data(self):
+        return self.profile.get('endpoint')
+
+    def get_credentials(self, org_name):
+        return self.profile.get('credentials', {}).get(org_name)
+
+
 class UsergridError(Exception):
     def __init__(self, message, status_code, api_response=None, url=None, data=None):
         super(UsergridError, self).__init__(message)
@@ -33,7 +56,7 @@ class UsergridError(Exception):
         return 'HTTP [%s] %s: %s' % (self.status_code, self.url, self.message)
 
 
-class UsergridClient:
+class UsergridClient(object):
     def __init__(self, api_url, org_name, access_token=None):
         self.access_token = access_token
         self.api_url = api_url
@@ -257,6 +280,13 @@ class UsergridEntity(object):
                                 url=url)
 
 
+class UsergridConnection(object):
+    def __init__(self, source_entity, verb, target_entity):
+        self.source_entity = source_entity
+        self.verb = verb
+        self.target_entity = target_entity
+
+
 class UsergridOrganization(object):
     def __init__(self, org_name, client):
         self.org_name = org_name
@@ -330,7 +360,7 @@ class UsergridCollection(object):
                                 url=url)
 
 
-class UsergridApplication:
+class UsergridApplication(object):
     def __init__(self, app_name, client):
         self.app_name = app_name
         self.client = client
@@ -371,7 +401,7 @@ class UsergridApplication:
         return self.client.authenticate_app_client(self.app_name, **kwargs)
 
 
-class UsergridQuery:
+class UsergridQuery(object):
     def __init__(self,
                  url,
                  operation='GET',
@@ -384,7 +414,7 @@ class UsergridQuery:
             headers = {}
 
         self.total_retrieved = 0
-        self.logger = logging.getLogger(str(self.__class__))
+        self.logger = logging.getLogger('usergrid.UsergridQuery')
         self.data = data
         self.headers = headers
         self.url = url
@@ -394,7 +424,7 @@ class UsergridQuery:
         self.count_retrieved = 0
         self._pos = 0
         self.last_response = None
-        self.sleep_time = 5
+        self.sleep_time = 1
         self.session = None
 
     def _get_next_response(self, attempts=0):
@@ -416,6 +446,8 @@ class UsergridQuery:
                 delim = '&' if '?' in target_url else '?'
                 target_url = '%s%scursor=%s' % (self.url, delim, self.next_cursor)
 
+            logger.info('URL: %s' % target_url)
+
             r = op(target_url, data=json.dumps(self.data), headers=self.headers)
 
             if r.status_code == 200:
@@ -424,17 +456,12 @@ class UsergridQuery:
                 return r_json
 
             else:
-                if attempts < 3:
-                    self.logger.info('URL=[%s], response: %s' % (target_url, r.text))
-                    self.logger.warning('Sleeping %s after HTTP [%s] for retry' % (r.status_code, self.sleep_time))
+                if attempts < 100:
+                    self.logger.info('URL=[%s] code=[%s], response: %s' % (target_url, r.status_code, r.text))
+                    self.logger.warning('Sleeping %s after HTTP [%s] for retry attempt=[%s]' % (self.sleep_time, r.status_code, attempts))
                     time.sleep(self.sleep_time)
 
-                    if r.status_code >= 500 or r.status_code == 401:
-                        return self._get_next_response(attempts=attempts + 1)
-
-                    elif 400 <= r.status_code < 500:
-                        raise SystemError('HTTP [%s] on attempt to get next page for url=[%s], will not retry: %s' % (
-                            r.status_code, target_url, r.text))
+                    return self._get_next_response(attempts=attempts + 1)
 
                 else:
                     raise SystemError('Unable to get next response after %s attempts' % attempts)
@@ -467,10 +494,14 @@ class UsergridQuery:
         api_response = self._get_next_response()
 
         self.last_response = api_response
+
+        if not api_response:
+            raise ValueError('API Response is null!')
+
         self.entities = api_response.get('entities', [])
         self.next_cursor = api_response.get('cursor')
         self._pos = 0
         self.count_retrieved += len(self.entities)
 
         if self.next_cursor is None:
-            logger.warning('no cursor in response. Total=[%s] url=[%s]' % (self.count_retrieved, self.url))
+            logger.info('no cursor in response. Total=[%s] url=[%s]' % (self.count_retrieved, self.url))

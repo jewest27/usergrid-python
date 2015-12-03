@@ -5,9 +5,9 @@ This is a starter project for the Usergrid Python SDK.  It is a work in progress
 
 # Installation
 
-## PIP
+## PIP (http://pip.readthedocs.org/en/stable/installing/)
 
-Currently working to get this distributed on PyPI: https://pypi.python.org/pypi/usergrid
+`pip install usergrid`
 
 ## Manual installation
 

@@ -446,19 +446,24 @@ class UsergridQuery(object):
                 delim = '&' if '?' in target_url else '?'
                 target_url = '%s%scursor=%s' % (self.url, delim, self.next_cursor)
 
-            logger.info('URL: %s' % target_url)
+            logger.debug('Operation=[%s] URL=[%s]' % (self.operation, target_url))
 
             r = op(target_url, data=json.dumps(self.data), headers=self.headers)
 
             if r.status_code == 200:
                 r_json = r.json()
-                self.logger.info('Retrieved [%s] entities' % len(r_json.get('entities', [])))
+                self.logger.info('Retrieved [%s] entities in %s' % (len(r_json.get('entities', [])), r.elapsed))
                 return r_json
 
+            elif r.status_code in [401, 404] and 'service_resource_not_found' in r.text:
+                self.logger.warn('Query Not Found [%s] on URL=[%s]: %s' % (r.status_code, target_url, r.text))
+                return None
+
             else:
-                if attempts < 100:
+                if attempts < 10:
                     self.logger.info('URL=[%s] code=[%s], response: %s' % (target_url, r.status_code, r.text))
-                    self.logger.warning('Sleeping %s after HTTP [%s] for retry attempt=[%s]' % (self.sleep_time, r.status_code, attempts))
+                    self.logger.warning('Sleeping %s after HTTP [%s] for retry attempt=[%s]' % (
+                        self.sleep_time, r.status_code, attempts))
                     time.sleep(self.sleep_time)
 
                     return self._get_next_response(attempts=attempts + 1)
@@ -472,12 +477,14 @@ class UsergridQuery(object):
     def next(self):
 
         if self.last_response is None:
-            logger.info('getting first page, url=[%s]' % self.url)
+            logger.debug('getting first page, url=[%s]' % self.url)
+
             self._process_next_page()
 
         elif self._pos >= len(self.entities) > 0 and self.next_cursor is not None:
-            logger.info('getting next page, count=[%s] url=[%s], cursor=[%s]' % (
+            logger.debug('getting next page, count=[%s] url=[%s], cursor=[%s]' % (
                 self.count_retrieved, self.url, self.next_cursor))
+
             self._process_next_page()
 
         if self._pos < len(self.entities):
@@ -491,15 +498,17 @@ class UsergridQuery(object):
         return self
 
     def _process_next_page(self, attempts=0):
+
         api_response = self._get_next_response()
+
+        if api_response is None:
+            logger.warn('Unable to retrieve query results from url=[%s]' % self.url)
+            api_response = {}
 
         self.last_response = api_response
 
-        if not api_response:
-            raise ValueError('API Response is null!')
-
         self.entities = api_response.get('entities', [])
-        self.next_cursor = api_response.get('cursor')
+        self.next_cursor = api_response.get('cursor', None)
         self._pos = 0
         self.count_retrieved += len(self.entities)
 

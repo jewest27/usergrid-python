@@ -1,9 +1,19 @@
+import json
+import logging
+
+import requests
+from usergrid.path_templates import management_org_list_apps_url_template, org_token_url_template, \
+    app_token_url_template
+
+from usergrid import UsergridError, UsergridOrganization, UsergridApplication
+
 
 class UsergridClient(object):
     def __init__(self, api_url, org_name, access_token=None):
         self.access_token = access_token
         self.api_url = api_url
         self.org_name = org_name
+        self.logger = logging.getLogger('usergrid.UsergridClient')
 
         if access_token is not None:
             self.headers = {'Authorization': 'Bearer %s' % access_token}

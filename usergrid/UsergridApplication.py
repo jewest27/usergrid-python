@@ -1,7 +1,15 @@
+import logging
+
+
+from usergrid import UsergridError, UsergridCollection
+from usergrid.app_templates import app_url_template
+
+
 class UsergridApplication(object):
     def __init__(self, app_name, client):
         self.app_name = app_name
         self.client = client
+        self.logger = logging.getLogger('usergrid.UsergridClient')
 
     def list_collections(self):
         url = app_url_template.format(app_name=self.app_name,

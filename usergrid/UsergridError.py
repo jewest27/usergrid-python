@@ -1,6 +1,7 @@
 
 
 class UsergridError(Exception):
+
     def __init__(self, message, status_code, api_response=None, url=None, data=None):
         super(UsergridError, self).__init__(message)
         self.status_code = status_code

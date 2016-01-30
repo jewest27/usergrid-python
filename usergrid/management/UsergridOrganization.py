@@ -1,3 +1,6 @@
+from usergrid import UsergridApplication
+
+
 class UsergridOrganization(object):
     def __init__(self, org_name, client):
         self.org_name = org_name

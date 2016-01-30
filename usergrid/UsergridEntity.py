@@ -1,3 +1,9 @@
+import json
+import logging
+
+from usergrid import UsergridError
+from usergrid.app_templates import get_entity_url_template, put_entity_url_template
+
 
 class UsergridEntity(object):
     def __init__(self, org_name, app_name, collection_name, data, client):
@@ -6,6 +12,7 @@ class UsergridEntity(object):
         self.collection_name = collection_name
         self.data = data
         self.client = client
+        self.logger = logging.getLogger('usergrid.UsergridEntity')
 
     def __str__(self):
         return json.dumps(self.data)

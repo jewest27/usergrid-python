@@ -2,8 +2,10 @@ import json
 import logging
 
 import requests
-from usergrid.path_templates import management_org_list_apps_url_template, org_token_url_template, \
-    app_token_url_template
+
+from usergrid.management_templates import management_org_list_apps_url_template
+
+from usergrid.app_templates import app_token_url_template
 
 from usergrid import UsergridError, UsergridOrganization, UsergridApplication
 

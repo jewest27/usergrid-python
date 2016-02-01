@@ -14,4 +14,6 @@ get_entity_url_template = "%s?connections={connections}" % entity_url_template
 put_entity_url_template = entity_url_template
 delete_entity_url_template = entity_url_template
 
+assign_role_url_template = '%s/roles/{role_uuid_name}/{entity_type}/{entity_uuid_name}' % app_url_template
+
 connect_entities_by_type_template = '%s/{from_collection}/{from_uuid_name}/{relationship}/{to_collection}/{to_uuid_name}' % app_url_template

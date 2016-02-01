@@ -6,7 +6,7 @@ import requests
 from usergrid.UsergridAuth import UsergridAppAuth
 
 from usergrid.app_templates import get_entity_url_template, post_collection_url_template, put_entity_url_template, \
-    delete_entity_url_template, connect_entities_by_type_template
+    delete_entity_url_template, connect_entities_by_type_template, assign_role_url_template
 
 
 def value_error(message):
@@ -49,6 +49,10 @@ class Usergrid(object):
     @staticmethod
     def disconnect_entities(from_entity, relationship, to_entity, **kwargs):
         return Usergrid.client.disconnect_entities(from_entity, relationship, to_entity, **kwargs)
+
+    @staticmethod
+    def assign_role(role_uuid_name, user_entity, **kwargs):
+        return Usergrid.client.assign_role(role_uuid_name, user_entity, **kwargs)
 
 
 class UsergridResponse(object):
@@ -106,7 +110,7 @@ class UsergridEntity(object):
 
     def entity_id(self):
 
-        if self.entity_data.get('type','').lower() in ['users', 'user']:
+        if self.entity_data.get('type', '').lower() in ['users', 'user']:
             return self.entity_data.get('uuid', self.entity_data.get('username'))
 
         return self.entity_data.get('uuid', self.entity_data.get('name'))
@@ -338,7 +342,21 @@ class UsergridClient(object):
 
         return UsergridResponse(r, self)
 
-    def disconnect_entities(self, from_entity, relationship, to_entity, auth=None, **kwargs):
+    def assign_role(self, role_uuid_name, entity, auth=None, **kwargs):
+        url = assign_role_url_template.format(role_uuid_name=role_uuid_name,
+                                              entity_type=entity.get('type'),
+                                              entity_uuid_name=entity.entity_id(),
+                                              **self.url_data)
+
+        if auth:
+            r = requests.delete(url, headers={'Authorization': 'Bearer %s' % auth.access_token})
+        else:
+            r = self.session.delete(url)
+
+        return UsergridResponse(r, self)
+
+
+def disconnect_entities(self, from_entity, relationship, to_entity, auth=None, **kwargs):
         url = connect_entities_by_type_template.format(from_collection=from_entity.get('type'),
                                                        from_uuid_name=from_entity.entity_id(),
                                                        relationship=relationship,

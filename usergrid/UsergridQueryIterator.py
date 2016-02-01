@@ -8,7 +8,7 @@ import time
 __author__ = 'Jeff West @ ApigeeCorporation'
 
 
-class UsergridQuery(object):
+class UsergridQueryIterator(object):
     def __init__(self,
                  url,
                  operation='GET',

@@ -1,48 +1,61 @@
 import json
-import time
-from usergrid import UsergridClient
+from usergrid import Usergrid
 
 __author__ = 'ApigeeCorporation'
 
 
 def main():
-
     with open('/Users/ApigeeCorporation/.usergrid/credentials/org_jwest1.json', 'r') as f:
         org_credentials = json.load(f)
 
     with open('/Users/ApigeeCorporation/.usergrid/credentials/app_a127.json', 'r') as f:
         a127 = json.load(f)
 
-    client = UsergridClient('https://api.usergrid.com', 'jwest1')
-    token = client.authenticate_management_client(client_credentials=org_credentials)
-    print token
+    Usergrid.init(org_id='jwest1',
+                  app_id='a127',
+                  client_id=a127['client_id'],
+                  client_secret=a127['client_secret'])
 
-    # a127_app = client.application('a127')
-    # token = a127_app.authenticate_app_client(client_credentials=a127)
-    # print token
-    #
-    app = client.get_application('a127')
-    c = app.collection('stuff')
-    new_entity = c.post({'foo': 'bar'})
-    print new_entity.data['uuid']
-    new_entity.data['jeff'] = 'west'
-    new_entity.put()
-    print new_entity.data['uuid']
-    print new_entity.data['jeff']
+    response = Usergrid.DELETE('pets', 'max')
+    if not response.ok:
+        print 'Failed to delete max: %s' % response
+        exit()
 
-    apps = client.list_apps()
+    response = Usergrid.DELETE('owners', 'jeff')
+    if not response.ok:
+        print 'Failed to delete Jeff: %s' % response
+        exit()
 
-    for app_name, app in apps.iteritems():
-        print app_name
+    response = Usergrid.POST('pets', {'name': 'max'})
 
-        collections = app.list_collections()
+    if response.ok:
+        pet = response.first()
+        print pet
+        response = Usergrid.POST('owners', {'name': 'jeff'})
 
-        for collection_name, collection in collections.iteritems():
-            print collection
+        if response.ok:
+            owner = response.first()
+            print owner
+            response = pet.connect('ownedBy', owner)
 
-            for e in collection.entities(limit=10):
-                print e
-                time.sleep(1)
+            if response.ok:
+                print 'Connected!'
+
+                response = pet.disconnect('ownedBy', owner)
+
+                if response.ok:
+                    print 'all done!'
+                else:
+                    print response
+            else:
+                print 'failed to connect: %s' % response
+
+        else:
+            print 'Failed to create Jeff: %s' % response
+
+    else:
+        print response
+
 
 
 main()

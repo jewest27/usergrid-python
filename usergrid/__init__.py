@@ -1,21 +1,20 @@
 __all__ = [
     'UsergridApplication',
     'UsergridClient',
-    'UsergridCollection',
     'UsergridConnection',
     'UsergridConnectionProfile',
     'UsergridEntity',
+    'Usergrid',
     'UsergridError',
     'UsergridOrganization',
-    'UsergridQuery'
+    'UsergridAuth',
+    'UsergridQueryIterator',
+    'UsergridResponse'
 ]
 
-from usergrid.UsergridApplication import UsergridApplication
-from usergrid.UsergridClient import UsergridClient
-from usergrid.UsergridCollection import UsergridCollection
-from usergrid.UsergridConnection import UsergridConnection
-from usergrid.UsergridConnectionProfile import UsergridConnectionProfile
-from usergrid.UsergridEntity import UsergridEntity
-from usergrid.UsergridError import UsergridError
-from usergrid.UsergridOrganization import UsergridOrganization
-from usergrid.UsergridQuery import UsergridQuery
+from .UsergridApplication import UsergridApplication
+from .UsergridClient import UsergridClient, Usergrid, UsergridResponse
+from .UsergridConnection import UsergridConnection
+from .UsergridOrganization import UsergridOrganization
+from .UsergridQueryIterator import UsergridQueryIterator
+from .UsergridAuth import UsergridAuth

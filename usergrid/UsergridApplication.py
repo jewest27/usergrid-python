@@ -6,13 +6,13 @@ from usergrid.app_templates import app_url_template
 
 
 class UsergridApplication(object):
-    def __init__(self, app_name, client):
-        self.app_name = app_name
+    def __init__(self, app_id, client):
+        self.app_id = app_id
         self.client = client
         self.logger = logging.getLogger('usergrid.UsergridClient')
 
     def list_collections(self):
-        url = app_url_template.format(app_name=self.app_name,
+        url = app_url_template.format(app_id=self.app_id,
                                       **self.client.url_data)
         r = self.client.get(url)
 
@@ -22,8 +22,8 @@ class UsergridApplication(object):
             collections = {}
 
             for collection_name in collection_list:
-                collections[collection_name] = UsergridCollection(self.client.org_name,
-                                                                  self.app_name,
+                collections[collection_name] = UsergridCollection(self.client.org_id,
+                                                                  self.app_id,
                                                                   collection_name,
                                                                   self.client)
 
@@ -36,12 +36,12 @@ class UsergridApplication(object):
                                 url=url)
 
     def collection(self, collection_name):
-        return UsergridCollection(self.client.org_name,
-                                  self.app_name,
+        return UsergridCollection(self.client.org_id,
+                                  self.app_id,
                                   collection_name,
                                   self.client)
 
     def authenticate_app_client(self,
                                 **kwargs):
 
-        return self.client.authenticate_app_client(self.app_name, **kwargs)
+        return self.client.authenticate_app_client(self.app_id, **kwargs)

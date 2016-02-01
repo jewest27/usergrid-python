@@ -12,9 +12,7 @@ def main():
         a127 = json.load(f)
 
     Usergrid.init(org_id='jwest1',
-                  app_id='a127',
-                  client_id=a127['client_id'],
-                  client_secret=a127['client_secret'])
+                  app_id='sandbox')
 
     response = Usergrid.DELETE('pets', 'max')
     if not response.ok:
@@ -55,7 +53,6 @@ def main():
 
     else:
         print response
-
 
 
 main()

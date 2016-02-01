@@ -32,7 +32,7 @@ class Usergrid(object):
 
     @staticmethod
     def PUT(collection, uuid_name, data, **kwargs):
-        return Usergrid.client.PUT(collection, uuid_name, **kwargs)
+        return Usergrid.client.PUT(collection, uuid_name, data, **kwargs)
 
     @staticmethod
     def POST(collection, data, **kwargs):
@@ -105,6 +105,10 @@ class UsergridEntity(object):
         return self.entity_data.get(name, default)
 
     def entity_id(self):
+
+        if self.entity_data.get('type','').lower() in ['users', 'user']:
+            return self.entity_data.get('uuid', self.entity_data.get('username'))
+
         return self.entity_data.get('uuid', self.entity_data.get('name'))
 
     def can_mutate_or_load(self):
@@ -176,9 +180,14 @@ class UsergridEntity(object):
         if not self.can_mutate_or_load():
             raise ValueError('Unable to save entity: No uuid nor name')
 
-        return Usergrid.PUT(collection=self.entity_data.get('type'),
-                            uuid_name=self.entity_id(),
-                            data=self.entity_data)
+        response = Usergrid.PUT(collection=self.entity_data.get('type'),
+                                uuid_name=self.entity_id(),
+                                data=self.entity_data)
+
+        if response.ok and 'uuid' not in self.entity_data:
+            self.entity_data['uuid'] = response.entity().get('uuid')
+
+        return response
 
     def remove(self):
         if not self.can_mutate_or_load():
@@ -199,8 +208,6 @@ class UsergridEntity(object):
             raise ValueError('Unable from connect to entity - no uuid or name')
 
         return Usergrid.connect_entities(self, relationship, to_entity)
-
-        pass
 
     def disconnect(self, relationship, to_entity):
         if not to_entity.can_mutate_or_load():

@@ -1,6 +1,22 @@
+#
+#  Licensed to the Apache Software Foundation (ASF) under one or more
+#   contributor license agreements.  The ASF licenses this file to You
+#  under the Apache License, Version 2.0 (the "License"); you may not
+#  use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.  For additional information regarding
+#  copyright in this work, please see the NOTICE file in the top level
+#  directory of this distribution.
+
 import json
 import logging
-import os
 import traceback
 import requests
 import time
@@ -59,7 +75,11 @@ class UsergridQueryIterator(object):
 
             if r.status_code == 200:
                 r_json = r.json()
-                self.logger.info('Retrieved [%s] entities in %s' % (len(r_json.get('entities', [])), r.elapsed))
+                count_retrieved = len(r_json.get('entities', []))
+                self.total_retrieved += count_retrieved
+                self.logger.info('Retrieved [%s] entities in [%s], total retrieved is [%s]' % (
+                    count_retrieved, r.elapsed, self.total_retrieved))
+
                 return r_json
 
             elif r.status_code in [401, 404] and 'service_resource_not_found' in r.text:

@@ -19,7 +19,7 @@ __author__ = 'Jeff West @ ApigeeCorporation'
 
 from setuptools import setup, find_packages
 
-VERSION = '0.1.0'
+VERSION = '0.1.3'
 
 setup(
         name='usergrid',

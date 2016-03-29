@@ -28,6 +28,8 @@ class UsergridQueryIterator(object):
     def __init__(self,
                  url,
                  operation='GET',
+                 sleep_time=2,
+                 page_delay=1,
                  headers=None,
                  data=None):
 
@@ -36,6 +38,7 @@ class UsergridQueryIterator(object):
         if not headers:
             headers = {}
 
+        self.page_counter = 0
         self.total_retrieved = 0
         self.logger = logging.getLogger('usergrid.UsergridQuery')
         self.data = data
@@ -47,7 +50,8 @@ class UsergridQueryIterator(object):
         self.count_retrieved = 0
         self._pos = 0
         self.last_response = None
-        self.sleep_time = 1
+        self.page_delay = page_delay
+        self.sleep_time = sleep_time
         self.session = None
 
     def _get_next_response(self, attempts=0):
@@ -77,8 +81,8 @@ class UsergridQueryIterator(object):
                 r_json = r.json()
                 count_retrieved = len(r_json.get('entities', []))
                 self.total_retrieved += count_retrieved
-                self.logger.info('Retrieved [%s] entities in [%s], total retrieved is [%s]' % (
-                    count_retrieved, r.elapsed, self.total_retrieved))
+                self.logger.info('Retrieved [%s] entities in [%s]th page in [%s], total from [%s] is [%s]' % (
+                    count_retrieved, self.page_counter, r.elapsed, self.url, self.total_retrieved))
 
                 return r_json
 
@@ -91,6 +95,7 @@ class UsergridQueryIterator(object):
                     self.logger.info('URL=[%s] code=[%s], response: %s' % (target_url, r.status_code, r.text))
                     self.logger.warning('Sleeping %s after HTTP [%s] for retry attempt=[%s]' % (
                         self.sleep_time, r.status_code, attempts))
+
                     time.sleep(self.sleep_time)
 
                     return self._get_next_response(attempts=attempts + 1)
@@ -104,15 +109,19 @@ class UsergridQueryIterator(object):
     def next(self):
 
         if self.last_response is None:
-            self.logger.debug('getting first page, url=[%s]' % self.url)
+            self.logger.info('getting first page, url=[%s]' % self.url)
 
             self._process_next_page()
 
         elif self._pos >= len(self.entities) > 0 and self.next_cursor is not None:
-            self.logger.debug('getting next page, count=[%s] url=[%s], cursor=[%s]' % (
+
+            self.logger.info('getting next page, count=[%s] url=[%s], cursor=[%s]' % (
                 self.count_retrieved, self.url, self.next_cursor))
 
             self._process_next_page()
+            self.logger.debug('Sleeping [%s]s between pages' % self.page_delay)
+
+            time.sleep(self.page_delay)
 
         if self._pos < len(self.entities):
             response = self.entities[self._pos]
@@ -138,6 +147,8 @@ class UsergridQueryIterator(object):
         self.next_cursor = api_response.get('cursor', None)
         self._pos = 0
         self.count_retrieved += len(self.entities)
+        self.page_counter += 1
 
         if self.next_cursor is None:
-            self.logger.info('no cursor in response. Total=[%s] url=[%s]' % (self.count_retrieved, self.url))
+            self.logger.info('no cursor in response. Total pages=[%s], entities=[%s] url=[%s]' % (
+            self.page_counter, self.count_retrieved, self.url))

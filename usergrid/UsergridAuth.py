@@ -18,6 +18,7 @@
 import json
 import requests
 from usergrid.management_templates import org_token_url_template
+from usergrid.app_templates import app_token_url_template
 
 
 class UsergridAuth:
